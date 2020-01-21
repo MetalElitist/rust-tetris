@@ -6,6 +6,9 @@ use ggez::{Context, GameResult};
 use ggez::input::keyboard;
 use ggez::event::{KeyCode, KeyMods};
 use ggez::event;
+use ggez::timer;
+
+use std::time;
 
 mod tetromino;
 use tetromino::Tetromino;
@@ -21,7 +24,7 @@ struct MainState {
 	block_mesh: graphics::Mesh,
 	tetr: Tetromino,
 	tetromino_fall_delay: i32,
-	time: i32,
+	last_update_time: u128,
 }
 
 impl MainState {
@@ -35,18 +38,22 @@ impl MainState {
 				graphics::Color::from((12, 123, 213))
 			).unwrap(),
 			tetr: Tetromino::new(),
-			tetromino_fall_delay: 20,
-			time: 0,
+			tetromino_fall_delay: 170,
+			last_update_time: time::SystemTime::now().elapsed().unwrap().as_millis(),
 		})
 	}
 }
 
 impl event::EventHandler for MainState {
 	fn update(&mut self, ctx: &mut Context) -> GameResult {
-		if self.time % self.tetromino_fall_delay == 0 {
-			self.tetr.fall(&self.grid);
+
+		// if self.time % self.tetromino_fall_delay == 0 {	
+		// println!("{}, {}", time::SystemTime::now().elapsed().unwrap().as_millis(), self.last_update_time);
+		if timer::time_since_start(ctx).as_millis() - self.last_update_time > self.tetromino_fall_delay as u128 {
+			self.tetr.fall(&mut self.grid);
+			self.last_update_time = timer::time_since_start(ctx).as_millis();
 		}
-		self.time+=1;
+
 		Ok(())
 	}
 
@@ -71,14 +78,18 @@ impl event::EventHandler for MainState {
 			}
 		}
 
-
 		graphics::present(ctx);
+		timer::yield_now();
 
 		Ok(())
 	}
 
 	fn key_down_event(&mut self, ctx: &mut Context, key: KeyCode, mods: KeyMods, _: bool) {
-
+		match key {
+			KeyCode::Left => self.tetr.move_tetromino(&mut self.grid, -1),
+			KeyCode::Right => self.tetr.move_tetromino(&mut self.grid, 1),
+			_ => (),
+		};
 	}
 }
 
