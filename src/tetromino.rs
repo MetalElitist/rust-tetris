@@ -1,4 +1,5 @@
 use ggez::nalgebra as na;
+use rand::RngCore;
 
 pub struct Tetromino {
 	pub pos: na::Point2<i32>,
@@ -12,7 +13,7 @@ impl Tetromino {
 			self.pos.y += 1;
 		} else {
 			self.place_to_grid(grid);
-			self.pos.y = 0;
+			self.reset();
 		}
 	}
 
@@ -30,7 +31,31 @@ impl Tetromino {
 	}
 
 	pub fn new() -> Self {
-		Self::create_L1()
+		Self {
+			pos: na::Point2::<i32>::new(0,0),
+			blocks: Self::randomized_blocks(),
+			rotation: 0,
+		}
+	}
+
+	pub fn reset(&mut self) {
+		self.blocks = Self::randomized_blocks();
+		self.rotation = 0;
+		self.pos.y = 0;
+		self.pos.x = (crate::grid_cols/2 - 1) as i32;
+	}
+
+	pub fn randomized_blocks() ->  [[[i32; crate::tetromino_width]; crate::tetromino_height]; 4] {
+		let random = rand::thread_rng().next_u32() % 6;
+		match random {
+			0 => Self::create_L1(),
+			1 => Self::create_L2(),
+			2 => Self::create_T(),
+			3 => Self::create_Z1(),
+			4 => Self::create_Z2(),
+			5 => Self::create_I(),
+			x => [[[1; crate::tetromino_width]; crate::tetromino_height]; 4],
+		}
 	}
 
 	pub fn can_fall(&self, grid: &[[i32; crate::grid_rows]; crate::grid_cols]) -> bool {
@@ -87,42 +112,179 @@ impl Tetromino {
 		}
 	}
 
-	pub fn create_L1() -> Self {
-		Self {
-			pos: na::Point2::<i32>::new(0,0),
-			blocks: [
-				[
-					[0,1,1,1],
-					[0,1,0,0],
-					[0,0,0,0],
-					[0,0,0,0],
-				],
-				[
-					[0,1,1,0],
-					[0,0,1,0],
-					[0,0,1,0],
-					[0,0,0,0],
-				],
-				[
-					[0,0,0,1],
-					[0,1,1,1],
-					[0,0,0,0],
-					[0,0,0,0],
-				],
-				[
-					[0,1,0,0],
-					[0,1,0,0],
-					[0,1,1,0],
-					[0,0,0,0],
-				],
+	pub fn create_L1() -> [[[i32; crate::tetromino_width]; crate::tetromino_height]; 4] {
+		[
+			[
+				[0,1,1,1],
+				[0,1,0,0],
+				[0,0,0,0],
+				[0,0,0,0],
 			],
-			rotation: 0,
-		}
+			[
+				[0,1,1,0],
+				[0,0,1,0],
+				[0,0,1,0],
+				[0,0,0,0],
+			],
+			[
+				[0,0,0,1],
+				[0,1,1,1],
+				[0,0,0,0],
+				[0,0,0,0],
+			],
+			[
+				[0,1,0,0],
+				[0,1,0,0],
+				[0,1,1,0],
+				[0,0,0,0],
+			],
+		]
 	}
 
-	// pub fn create_L2() -> Self {
+	pub fn create_L2() -> [[[i32; crate::tetromino_width]; crate::tetromino_height]; 4] {
+		[
+			[
+				[0,1,0,0],
+				[0,1,1,1],
+				[0,0,0,0],
+				[0,0,0,0],
+			],
+			[
+				[0,1,1,0],
+				[0,1,0,0],
+				[0,1,0,0],
+				[0,0,0,0],
+			],
+			[
+				[0,1,1,1],
+				[0,0,0,1],
+				[0,0,0,0],
+				[0,0,0,0],
+			],
+			[
+				[0,0,1,0],
+				[0,0,1,0],
+				[0,1,1,0],
+				[0,0,0,0],
+			],
+		]
+	}
 
-	// }
+	pub fn create_T() -> [[[i32; crate::tetromino_width]; crate::tetromino_height]; 4] {
+		[
+			[
+				[0,1,0,0],
+				[1,1,1,0],
+				[0,0,0,0],
+				[0,0,0,0],
+			],
+			[
+				[0,1,0,0],
+				[0,1,1,0],
+				[0,1,0,0],
+				[0,0,0,0],
+			],
+			[
+				[1,1,1,0],
+				[0,1,0,0],
+				[0,0,0,0],
+				[0,0,0,0],
+			],
+			[
+				[0,1,0,0],
+				[1,1,0,0],
+				[0,1,0,0],
+				[0,0,0,0],
+			],
+		]
+	}
+
+	pub fn create_Z1() -> [[[i32; crate::tetromino_width]; crate::tetromino_height]; 4] {
+		[
+			[
+				[0,0,0,0],
+				[0,0,1,1],
+				[0,1,1,0],
+				[0,0,0,0],
+			],
+			[
+				[0,1,0,0],
+				[0,1,1,0],
+				[0,0,1,0],
+				[0,0,0,0],
+			],
+			[
+				[0,1,0,0],
+				[0,1,1,0],
+				[0,0,1,0],
+				[0,0,0,0],
+			],
+			[
+				[0,1,0,0],
+				[0,1,1,0],
+				[0,0,1,0],
+				[0,0,0,0],
+			],
+		]
+	}
+
+	pub fn create_Z2() -> [[[i32; crate::tetromino_width]; crate::tetromino_height]; 4] {
+		[
+			[
+				[0,0,0,0],
+				[0,1,1,0],
+				[0,0,1,1],
+				[0,0,0,0],
+			],
+			[
+				[0,0,1,0],
+				[0,1,1,0],
+				[0,1,0,0],
+				[0,0,0,0],
+			],
+			[
+				[0,0,0,0],
+				[0,1,1,0],
+				[0,0,1,1],
+				[0,0,0,0],
+			],
+			[
+				[0,0,1,0],
+				[0,1,1,0],
+				[0,1,0,0],
+				[0,0,0,0],
+			],
+		]
+	}
+
+	pub fn create_I() -> [[[i32; crate::tetromino_width]; crate::tetromino_height]; 4] {
+		[
+			[
+				[0,0,0,0],
+				[1,1,1,1],
+				[0,0,0,0],
+				[0,0,0,0],
+			],
+			[
+				[0,1,0,0],
+				[0,1,0,0],
+				[0,1,0,0],
+				[0,1,0,0],
+			],
+			[
+				[0,0,0,0],
+				[1,1,1,1],
+				[0,0,0,0],
+				[0,0,0,0],
+			],
+			[
+				[0,1,0,0],
+				[0,1,0,0],
+				[0,1,0,0],
+				[0,1,0,0],
+			],
+		]
+	}
 
 }
 

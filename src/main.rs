@@ -23,7 +23,9 @@ struct MainState {
 	grid: [[i32; grid_rows]; grid_cols],
 	block_mesh: graphics::Mesh,
 	tetr: Tetromino,
-	tetromino_fall_delay: i32,
+	tetromino_fall_delay: u32,
+	tetromino_normal_fall_delay: u32,
+	tetromino_decreasing_fall_delay: u32,	
 	last_update_time: u128,
 }
 
@@ -39,6 +41,8 @@ impl MainState {
 			).unwrap(),
 			tetr: Tetromino::new(),
 			tetromino_fall_delay: 170,
+			tetromino_normal_fall_delay: 170,
+			tetromino_decreasing_fall_delay: 130,
 			last_update_time: time::SystemTime::now().elapsed().unwrap().as_millis(),
 		})
 	}
@@ -90,6 +94,14 @@ impl event::EventHandler for MainState {
 			KeyCode::Right => self.tetr.move_tetromino(&mut self.grid, 1),
 			KeyCode::A => self.tetr.rotate(&self.grid, -1),
 			KeyCode::S => self.tetr.rotate(&self.grid, 1),
+			KeyCode::Down => self.tetromino_fall_delay = self.tetromino_normal_fall_delay - self.tetromino_decreasing_fall_delay,
+			_ => (),
+		};
+	}
+
+	fn key_up_event(&mut self, ctx: &mut Context, key: KeyCode, mods: KeyMods) {
+		match key {
+			KeyCode::Down => self.tetromino_fall_delay = self.tetromino_normal_fall_delay,
 			_ => (),
 		};
 	}
