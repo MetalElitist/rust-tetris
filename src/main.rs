@@ -70,7 +70,7 @@ impl event::EventHandler for MainState {
 
 		for x in 0..tetromino_width {
 			for y in 0..tetromino_height {
-				if self.tetr.blocks[y][x] == 1 {
+				if self.tetr.blocks[self.tetr.rotation][y][x] == 1 {
 					let blockX = (self.tetr.pos.x + x as i32) as f32 * cellsize as f32;
 					let blockY = (self.tetr.pos.y + y as i32) as f32 * cellsize as f32;
 					graphics::draw(ctx, &self.block_mesh, (na::Point2::<f32>::new(blockX, blockY),));
@@ -88,6 +88,8 @@ impl event::EventHandler for MainState {
 		match key {
 			KeyCode::Left => self.tetr.move_tetromino(&mut self.grid, -1),
 			KeyCode::Right => self.tetr.move_tetromino(&mut self.grid, 1),
+			KeyCode::A => self.tetr.rotate(&self.grid, -1),
+			KeyCode::S => self.tetr.rotate(&self.grid, 1),
 			_ => (),
 		};
 	}
