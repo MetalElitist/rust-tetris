@@ -48,6 +48,44 @@ impl MainState {
 	}
 }
 
+impl MainState {
+	fn check_rows(&self) -> [(usize, bool);4] { // Первый элемент - строка, второй - заполненная она или нет
+		let mut rowsinfo: [(usize, bool);4] = [(0,false);4];
+		let mut num_filled_rows = 0;
+		for y in 0..grid_rows {
+			rowsinfo[num_filled_rows].0 = y;
+			rowsinfo[num_filled_rows].1 = true;
+			for x in 0..grid_cols {
+				if self.grid[x][y] == 0 {
+					rowsinfo[num_filled_rows].1 = false;
+					break;
+				}
+			}
+			if rowsinfo[num_filled_rows].1 {
+				num_filled_rows+=1;
+			}
+		}
+		rowsinfo
+	}
+
+	fn clear_row(&mut self, row: usize) {
+		for y in 0..grid_cols {
+			self.grid[y][row] = 0;
+		}
+	}
+
+	fn lower_above(&mut self, row: usize) { // Опускает все вышестоящие строки начиная с row
+		// println!("{}", row);
+		for y in (1..row+1).rev() {
+			// println!("row {}", y);
+			for x in 0..grid_cols {
+				// print!("c: {}, v: {} ", x, self.grid[x as usize][y as usize]);
+				self.grid[x as usize][y as usize] = self.grid[x as usize][(y - 1) as usize];
+			}
+		}
+	}
+}
+
 impl event::EventHandler for MainState {
 	fn update(&mut self, ctx: &mut Context) -> GameResult {
 
@@ -55,6 +93,14 @@ impl event::EventHandler for MainState {
 		// println!("{}, {}", time::SystemTime::now().elapsed().unwrap().as_millis(), self.last_update_time);
 		if timer::time_since_start(ctx).as_millis() - self.last_update_time > self.tetromino_fall_delay as u128 {
 			self.tetr.fall(&mut self.grid);
+			let rowsinfo = self.check_rows();
+			for row in rowsinfo.iter() {
+				if row.1 {
+					self.clear_row(row.0);
+					self.lower_above(row.0);
+				}
+			}
+			// println!("{:?}", rowsinfo);
 			self.last_update_time = timer::time_since_start(ctx).as_millis();
 		}
 
@@ -105,6 +151,8 @@ impl event::EventHandler for MainState {
 			_ => (),
 		};
 	}
+
+	
 }
 
 fn main() -> GameResult {
@@ -139,5 +187,8 @@ fn main() -> GameResult {
 	let cb = ggez::ContextBuilder::new("super_simple", "ggez").conf(conf);
 	let (ref mut ctx, event_loop) = &mut cb.build()?;
 	let state = &mut MainState::new(ctx)?;
+	for x in 0..grid_cols - 1 {
+		state.grid[x][grid_rows-1] = 1;
+	}
 	event::run(ctx, event_loop, state)
 }
