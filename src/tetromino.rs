@@ -8,12 +8,14 @@ pub struct Tetromino {
 }
 
 impl Tetromino {
-	pub fn fall(&mut self, grid: &mut [[i32; crate::grid_rows]; crate::grid_cols]) {
+	pub fn fall(&mut self, grid: &mut [[i32; crate::grid_rows]; crate::grid_cols]) -> bool { // has fallen?
 		if self.can_fall(grid) {
 			self.pos.y += 1;
+			false
 		} else {
 			self.place_to_grid(grid);
 			self.reset();
+			true
 		}
 	}
 
