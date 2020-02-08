@@ -12,7 +12,9 @@ use std::time;
 use std::time::SystemTime;
 
 mod tetromino;
+mod das;
 use tetromino::Tetromino;
+use das::DAS;
 
 pub const grid_cols : usize = 20;
 pub const grid_rows : usize = 30;
@@ -26,12 +28,15 @@ struct MainState {
 	block_mesh2: graphics::Mesh,
 	clear_mesh: graphics::Mesh,
 	tetr: Tetromino,
+	das: DAS,
 	tetromino_fall_delay: u32,
 	tetromino_normal_fall_delay: u32,
 	tetromino_decreasing_fall_delay: u32,	
 	last_update_time: u128,
 	need_redraw_all: bool,
 	pressed_down: bool,
+	left_pressed: bool,
+	right_pressed: bool,
 }
 
 impl MainState {
@@ -59,12 +64,15 @@ impl MainState {
 				graphics::BLACK
 			).unwrap(),
 			tetr: Tetromino::new(),
+			das: DAS::new(),
 			tetromino_fall_delay: 90000,
 			tetromino_normal_fall_delay: 90000,
 			tetromino_decreasing_fall_delay: 81130,
 			last_update_time: 0,
 			need_redraw_all: true,
 			pressed_down: false,
+			left_pressed: false,
+			right_pressed: false,
 		})
 	}
 }
@@ -110,11 +118,21 @@ impl MainState {
 impl event::EventHandler for MainState {
 	fn update(&mut self, ctx: &mut Context) -> GameResult {
 
+		self.das.tick();
+		if self.das.need_move {
+			self.das.moved = self.tetr.move_tetromino(&mut self.grid, self.das.side);
+			if self.das.moved {
+				self.das.need_move = false;
+			}
+		}
+		// println!("{}", self.das.new_tetromino);
+
 		let delta = (SystemTime::now() - timer::time_since_start(ctx)).elapsed().unwrap().as_micros() as i128 - self.last_update_time as i128;
 		if delta > self.tetromino_fall_delay as i128 {
 			self.last_update_time = (SystemTime::now() - timer::time_since_start(ctx)).elapsed().unwrap().as_micros();// + (delta as u128 - self.tetromino_fall_delay as u128);
 			
 			if self.tetr.fall(&mut self.grid) {
+				self.das.new_tetromino();
 				self.need_redraw_all = true;
 			}
 			let rowsinfo = self.check_rows();
@@ -130,7 +148,7 @@ impl event::EventHandler for MainState {
 	}
 
 	fn draw(&mut self, ctx: &mut Context) -> GameResult {
-		let mut draw_region = (self.tetr.pos.x - 1, self.tetr.pos.y - 1, self.tetr.pos.x + 4, self.tetr.pos.y+4);
+		let mut draw_region = (self.tetr.pos.x - 1, self.tetr.pos.y - 1, self.tetr.pos.x + 5, self.tetr.pos.y+4);
 		if self.need_redraw_all {
 			draw_region = (0, 0, grid_cols as i32, grid_rows as i32);
 			self.need_redraw_all = false;
@@ -153,27 +171,47 @@ impl event::EventHandler for MainState {
 			}
 		}
 
+		let mut tetromino_mesh = &self.block_mesh;
+		// let debug_mesh = das::DAS_DEBUG::debug_mesh(ctx, &self.das, cellsize as f32);
+		// tetromino_mesh = &debug_mesh;
+
 		for x in 0..tetromino_width {
 			for y in 0..tetromino_height {
 				if self.tetr.blocks[self.tetr.rotation][y][x] == 1 {
 					let blockX = (self.tetr.pos.x + x as i32) as f32 * cellsize as f32;
 					let blockY = (self.tetr.pos.y + y as i32) as f32 * cellsize as f32;
-					graphics::draw(ctx, &self.block_mesh, (na::Point2::<f32>::new(blockX, blockY),));
-					graphics::draw(ctx, &self.block_mesh2,(na::Point2::<f32>::new(blockX, blockY),));
+					graphics::draw(ctx, tetromino_mesh, (na::Point2::<f32>::new(blockX, blockY),));
+					graphics::draw(ctx, &self.block_mesh2, (na::Point2::<f32>::new(blockX, blockY),));
 				}
 			}
 		}
 
 		graphics::present(ctx);
-		// timer::yield_now();
+		timer::yield_now();
 
 		Ok(())
 	}
 
 	fn key_down_event(&mut self, ctx: &mut Context, key: KeyCode, mods: KeyMods, _: bool) {
 		match key {
-			KeyCode::Left => self.tetr.move_tetromino(&mut self.grid, -1),
-			KeyCode::Right => self.tetr.move_tetromino(&mut self.grid, 1),
+			KeyCode::Left => {
+				if !self.das.moving {
+					self.das.need_move = true;
+				}
+				if !self.left_pressed {
+					self.das.start_moving(-1);
+				}
+				self.left_pressed = true;
+			},
+			KeyCode::Right => {
+				if !self.das.moving {
+					self.das.need_move = true;
+				}
+				if !self.right_pressed {
+					self.das.start_moving(1);
+				}
+				self.right_pressed = true;
+			},
 			KeyCode::A => self.tetr.rotate(&self.grid, -1),
 			KeyCode::S => self.tetr.rotate(&self.grid, 1),
 			KeyCode::Down => {
@@ -186,6 +224,14 @@ impl event::EventHandler for MainState {
 
 	fn key_up_event(&mut self, ctx: &mut Context, key: KeyCode, mods: KeyMods) {
 		match key {
+			KeyCode::Left => {
+				self.das.stop_moving();
+				self.left_pressed = false;
+			},
+			KeyCode::Right => {
+				self.das.stop_moving();
+				self.right_pressed = false;
+			},
 			KeyCode::Down => {
 				self.tetromino_fall_delay = self.tetromino_normal_fall_delay;
 				self.pressed_down = false;

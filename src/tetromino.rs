@@ -19,10 +19,12 @@ impl Tetromino {
 		}
 	}
 
-	pub fn move_tetromino(&mut self, grid: &mut [[i32; crate::grid_rows]; crate::grid_cols], dir: i8) {
+	pub fn move_tetromino(&mut self, grid: &mut [[i32; crate::grid_rows]; crate::grid_cols], dir: i8) -> bool { // moved?
 		if self.can_move(grid, dir) {
 			self.pos.x += dir as i32;
+			return true
 		}
+		false
 	}
 
 	pub fn rotate(&mut self, grid: &[[i32; crate::grid_rows]; crate::grid_cols], dir: i8) {
