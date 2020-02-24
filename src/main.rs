@@ -16,7 +16,7 @@ mod das;
 use tetromino::Tetromino;
 use das::DAS;
 
-pub const grid_cols : usize = 20;
+pub const grid_cols : usize = 12;
 pub const grid_rows : usize = 30;
 pub const cellsize : f32 = 25f32;
 pub const tetromino_width : usize = 4;
@@ -32,8 +32,10 @@ struct MainState {
 	level: u16,
 	lines: u16,
 	tetromino_fall_delay: u32,
+	tetromino_fall_delay_devider: f32,
+	tetromino_fall_delay_normal_devider: f32,
+	tetromino_descreasing_fall_delay_devider: f32,
 	tetromino_normal_fall_delay: u32,
-	tetromino_decreasing_fall_delay: u32,
 	last_update_time: u128,
 	need_redraw_all: bool,
 	pressed_down: bool,
@@ -69,9 +71,11 @@ impl MainState {
 			das: DAS::new(),
 			level: 1,
 			lines: 0,
-			tetromino_fall_delay: 90000,
-			tetromino_normal_fall_delay: 90000,
-			tetromino_decreasing_fall_delay: 81130,
+			tetromino_fall_delay: 60000,
+			tetromino_fall_delay_devider: 8.0,
+			tetromino_fall_delay_normal_devider: 8.0,
+			tetromino_descreasing_fall_delay_devider: 0.3,
+			tetromino_normal_fall_delay: 60000,
 			last_update_time: 0,
 			need_redraw_all: true,
 			pressed_down: false,
@@ -107,7 +111,7 @@ impl MainState {
 		}
 		self.lines += 1;
 		println!("lines: {}", self.lines);
-		if (self.lines/10 >= self.level && self.lines % 10 == 0) {
+		if (self.lines/2 >= self.level && self.lines % 2 == 0) {
 			self.level += 1;
 			println!("new level {}", self.level);
 		}
@@ -137,7 +141,7 @@ impl event::EventHandler for MainState {
 		}
 		// println!("{}", self.das.new_tetromino);
 
-		let fall_delay = (self.tetromino_fall_delay as f32/(self.level as f32/0.9f32)) as i128;
+		let fall_delay = (self.tetromino_fall_delay as f32/(self.level as f32/self.tetromino_fall_delay_devider)) as i128;
 
 		let delta = (SystemTime::now() - timer::time_since_start(ctx)).elapsed().unwrap().as_micros() as i128 - self.last_update_time as i128;
 		if delta > fall_delay {
@@ -186,8 +190,8 @@ impl event::EventHandler for MainState {
 		}
 
 		let mut tetromino_mesh = &self.block_mesh;
-		let debug_mesh = das::DAS_DEBUG::debug_mesh(ctx, &self.das, cellsize as f32);
-		tetromino_mesh = &debug_mesh;
+		// let debug_mesh = das::DAS_DEBUG::debug_mesh(ctx, &self.das, cellsize as f32);
+		// tetromino_mesh = &debug_mesh;
 
 		for x in 0..tetromino_width {
 			for y in 0..tetromino_height {
@@ -229,7 +233,8 @@ impl event::EventHandler for MainState {
 			KeyCode::A => self.tetr.rotate(&self.grid, -1),
 			KeyCode::S => self.tetr.rotate(&self.grid, 1),
 			KeyCode::Down => {
-				self.tetromino_fall_delay = self.tetromino_normal_fall_delay - self.tetromino_decreasing_fall_delay;
+				// self.tetromino_fall_delay = self.tetromino_normal_fall_delay - self.tetromino_decreasing_fall_delay;
+				self.tetromino_fall_delay_devider = self.tetromino_descreasing_fall_delay_devider;
 				self.pressed_down = true;
 			},
 			_ => (),
@@ -247,7 +252,8 @@ impl event::EventHandler for MainState {
 				self.right_pressed = false;
 			},
 			KeyCode::Down => {
-				self.tetromino_fall_delay = self.tetromino_normal_fall_delay;
+				// self.tetromino_fall_delay = self.tetromino_normal_fall_delay;
+				self.tetromino_fall_delay_devider = self.tetromino_fall_delay_normal_devider;
 				self.pressed_down = false;
 			},
 			_ => (),

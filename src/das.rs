@@ -72,19 +72,21 @@ impl DAS {
 	}
 
 	pub fn start_moving(&mut self, side: i8) {
-		if self.side != side && (!self.new_tetromino && !self.moving)  {
+		if (self.side != side && !self.new_tetromino) || (!self.new_tetromino && !self.moving)  {
 			self.deactivate();
-
 		}
 		self.side = side;
 		if !self.active {
 			self.activating = true;
 		}
 		self.moving = true;
+		self.new_tetromino = false;
 	}
 
 	pub fn stop_moving(&mut self) {
 		self.activating = false;
+		self.ticks_left_to_activate = self.ticks_to_activate;
+		self.ticks_left_to_move = self.ticks_to_move;
 		self.moving = false;
 		self.need_move = false;
 		// if self.moved {
