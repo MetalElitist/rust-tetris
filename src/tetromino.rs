@@ -35,6 +35,7 @@ impl Tetromino {
 	}
 
 	pub fn new() -> Self {
+		println!("tetromino new");
 		Self {
 			pos: na::Point2::<i32>::new(0,0),
 			blocks: Self::randomized_blocks(),
@@ -49,7 +50,7 @@ impl Tetromino {
 		self.pos.x = (crate::grid_cols/2 - 1) as i32;
 	}
 
-	pub fn randomized_blocks() ->  [[[i32; crate::tetromino_width]; crate::tetromino_height]; 4] {
+	pub fn randomized_blocks() -> [[[i32; crate::tetromino_width]; crate::tetromino_height]; 4] {
 		let random = rand::thread_rng().next_u32() % 6;
 		match random {
 			0 => Self::create_L1(),
