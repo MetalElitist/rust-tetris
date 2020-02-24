@@ -29,9 +29,11 @@ struct MainState {
 	clear_mesh: graphics::Mesh,
 	tetr: Tetromino,
 	das: DAS,
+	level: u16,
+	lines: u16,
 	tetromino_fall_delay: u32,
 	tetromino_normal_fall_delay: u32,
-	tetromino_decreasing_fall_delay: u32,	
+	tetromino_decreasing_fall_delay: u32,
 	last_update_time: u128,
 	need_redraw_all: bool,
 	pressed_down: bool,
@@ -65,6 +67,8 @@ impl MainState {
 			).unwrap(),
 			tetr: Tetromino::new(),
 			das: DAS::new(),
+			level: 1,
+			lines: 0,
 			tetromino_fall_delay: 90000,
 			tetromino_normal_fall_delay: 90000,
 			tetromino_decreasing_fall_delay: 81130,
@@ -101,6 +105,12 @@ impl MainState {
 		for y in 0..grid_cols {
 			self.grid[y][row] = 0;
 		}
+		self.lines += 1;
+		println!("lines: {}", self.lines);
+		if (self.lines/10 >= self.level && self.lines % 10 == 0) {
+			self.level += 1;
+			println!("new level {}", self.level);
+		}
 	}
 
 	fn lower_above(&mut self, row: usize) { // Опускает все вышестоящие строки начиная с row
@@ -127,13 +137,17 @@ impl event::EventHandler for MainState {
 		}
 		// println!("{}", self.das.new_tetromino);
 
+		let fall_delay = (self.tetromino_fall_delay as f32/(self.level as f32/0.9f32)) as i128;
+
 		let delta = (SystemTime::now() - timer::time_since_start(ctx)).elapsed().unwrap().as_micros() as i128 - self.last_update_time as i128;
-		if delta > self.tetromino_fall_delay as i128 {
+		if delta > fall_delay {
 			self.last_update_time = (SystemTime::now() - timer::time_since_start(ctx)).elapsed().unwrap().as_micros();// + (delta as u128 - self.tetromino_fall_delay as u128);
 			
 			if self.tetr.fall(&mut self.grid) {
 				self.das.new_tetromino();
 				self.need_redraw_all = true;
+			} else {
+				self.das.fall();
 			}
 			let rowsinfo = self.check_rows();
 			for row in rowsinfo.iter() {
@@ -172,8 +186,8 @@ impl event::EventHandler for MainState {
 		}
 
 		let mut tetromino_mesh = &self.block_mesh;
-		// let debug_mesh = das::DAS_DEBUG::debug_mesh(ctx, &self.das, cellsize as f32);
-		// tetromino_mesh = &debug_mesh;
+		let debug_mesh = das::DAS_DEBUG::debug_mesh(ctx, &self.das, cellsize as f32);
+		tetromino_mesh = &debug_mesh;
 
 		for x in 0..tetromino_width {
 			for y in 0..tetromino_height {
