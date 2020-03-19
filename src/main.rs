@@ -13,8 +13,10 @@ use std::time::SystemTime;
 
 mod tetromino;
 mod das;
+mod hud;
 use tetromino::Tetromino;
 use das::DAS;
+use hud::HUD;
 
 pub const grid_cols : usize = 12;
 pub const grid_rows : usize = 30;
@@ -25,12 +27,15 @@ pub const tetromino_height : usize = 4;
 pub const next_tetromino_frame_width : f32 = cellsize * 6.0;
 pub const next_tetromino_x_offset : f32 = cellsize;
 pub const next_tetromino_y_offset : f32 = cellsize*5.0;
+pub const window_width : f32 = grid_cols as f32*cellsize + next_tetromino_frame_width;
+pub const window_height : f32 = grid_rows as f32*cellsize;
 
 struct MainState {
 	grid: [[i32; grid_rows]; grid_cols],
 	block_mesh: graphics::Mesh,
 	block_mesh2: graphics::Mesh,
 	clear_mesh: graphics::Mesh,
+	hud: HUD,
 	tetr: Tetromino,
 	next_tetr: Tetromino,
 	das: DAS,
@@ -41,6 +46,8 @@ struct MainState {
 	tetromino_fall_delay_normal_devider: f32,
 	tetromino_descreasing_fall_delay_devider: f32,
 	tetromino_normal_fall_delay: u32,
+	das_update_delay: u32,
+	last_das_update_time: u128,
 	last_update_time: u128,
 	need_redraw_all: bool,
 	pressed_down: bool,
@@ -72,6 +79,7 @@ impl MainState {
 				graphics::Rect{x:0.,y:0.,w:cellsize as f32, h:cellsize as f32},
 				graphics::BLACK
 			).unwrap(),
+			hud: HUD::new(ctx),
 			tetr: Tetromino::new(),
 			next_tetr: Tetromino::new(),
 			das: DAS::new(),
@@ -82,6 +90,8 @@ impl MainState {
 			tetromino_fall_delay_normal_devider: 8.0,
 			tetromino_descreasing_fall_delay_devider: 0.3,
 			tetromino_normal_fall_delay: 60000,
+			das_update_delay: 5000,
+			last_das_update_time: 0,
 			last_update_time: 0,
 			need_redraw_all: true,
 			pressed_down: false,
@@ -96,6 +106,11 @@ impl MainState {
 		let mut rowsinfo: [(usize, bool);4] = [(0,false);4];
 		let mut num_filled_rows = 0;
 		for y in 0..grid_rows {
+			if num_filled_rows >= 4 {
+				println!("warning: num_filled_rows >= 4");
+				break
+			}
+			// assert!(num_filled_rows < 4);
 			rowsinfo[num_filled_rows].0 = y;
 			rowsinfo[num_filled_rows].1 = true;
 			for x in 0..grid_cols {
@@ -119,7 +134,6 @@ impl MainState {
 
 		if (self.lines/2 >= self.level && self.lines % 2 == 0) {
 			self.level += 1;
-
 		}
 	}
 
@@ -137,24 +151,29 @@ impl MainState {
 
 impl event::EventHandler for MainState {
 	fn update(&mut self, ctx: &mut Context) -> GameResult {
-
-		self.das.tick();
-		if self.das.need_move {
-			self.das.moved = self.tetr.move_tetromino(&mut self.grid, self.das.side);
-			if self.das.moved {
-				self.das.need_move = false;
-			}
-		}
-
-
 		let fall_delay = (self.tetromino_fall_delay as f32/(self.level as f32/self.tetromino_fall_delay_devider)) as i128;
 
 		let delta = (SystemTime::now() - timer::time_since_start(ctx)).elapsed().unwrap().as_micros() as i128 - self.last_update_time as i128;
+
+		let das_delta = (SystemTime::now() - timer::time_since_start(ctx)).elapsed().unwrap().as_micros() as i128 - self.last_das_update_time as i128;
+
+		if das_delta > self.das_update_delay as i128 {	
+			self.das.tick();
+			if self.das.need_move {
+				self.das.moved = self.tetr.move_tetromino(&mut self.grid, self.das.side);
+				if self.das.moved {
+					self.das.need_move = false;
+				}
+			}
+			self.last_das_update_time = (SystemTime::now() - timer::time_since_start(ctx)).elapsed().unwrap().as_micros();
+		}
+
 		if delta > fall_delay {
 			self.last_update_time = (SystemTime::now() - timer::time_since_start(ctx)).elapsed().unwrap().as_micros();// + (delta as u128 - self.tetromino_fall_delay as u128);
 			
 			if self.tetr.fall(&mut self.grid) {
 				self.das.new_tetromino();
+				self.tetromino_fall_delay_devider = self.tetromino_fall_delay_normal_devider;
 				self.need_redraw_all = true;
 				self.tetr.blocks = self.next_tetr.blocks;
 				self.next_tetr.reset();
@@ -176,7 +195,8 @@ impl event::EventHandler for MainState {
 	fn draw(&mut self, ctx: &mut Context) -> GameResult {
 		let mut draw_region = (self.tetr.pos.x - 1, self.tetr.pos.y - 1, self.tetr.pos.x + 5, self.tetr.pos.y+4);
 		if self.need_redraw_all {
-			draw_region = (0, 0, grid_cols as i32, grid_rows as i32);
+			graphics::clear(ctx, ggez::graphics::BLACK);
+			draw_region = (0, 0, window_width as i32, window_height as i32);
 			self.need_redraw_all = false;
 
 			let next_tetr_frame_mesh = graphics::Mesh::new_rectangle(ctx, graphics::DrawMode::fill(), graphics::Rect{x:0.,y:0.,w:next_tetromino_frame_width, h:grid_cols as f32 * cellsize}, graphics::BLACK).unwrap();
@@ -196,6 +216,9 @@ impl event::EventHandler for MainState {
 					}
 				}
 			}
+
+			// draw HUD
+			self.hud.draw(ctx, &na::Point2::<f32>::new(grid_cols as f32 * cellsize, 30.0), self.level, self.lines);
 
 		}
 		if self.pressed_down {
@@ -261,8 +284,10 @@ impl event::EventHandler for MainState {
 			KeyCode::S => self.tetr.rotate(&self.grid, 1),
 			KeyCode::Down => {
 				// self.tetromino_fall_delay = self.tetromino_normal_fall_delay - self.tetromino_decreasing_fall_delay;
-				self.tetromino_fall_delay_devider = self.tetromino_descreasing_fall_delay_devider;
-				self.pressed_down = true;
+				if !self.pressed_down {
+					self.tetromino_fall_delay_devider = self.tetromino_descreasing_fall_delay_devider;
+					self.pressed_down = true;
+				}
 			},
 			_ => (),
 		};
@@ -300,8 +325,8 @@ fn main() -> GameResult {
 	};
 
 	let windowmode = ggez::conf::WindowMode {
-		width: grid_cols as f32*cellsize + next_tetromino_frame_width,
-		height: grid_rows as f32*cellsize,
+		width: window_width,
+		height: window_height,
 		maximized: false,
 		fullscreen_type: ggez::conf::FullscreenType::Windowed,
 		borderless: false,
